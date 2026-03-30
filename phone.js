@@ -1,11 +1,13 @@
 const puppeteer = require("puppeteer");
+require("dotenv").config();
 
-const domain = "lead4s.letsscall.com";
-const admin_username = "6666";
-const admin_password = "hjkasbxasjh4645";
+const domain = process.env.DOMAIN;
+const admin_username = process.env.ADMIN_USERNAME;
+const admin_password = process.env.ADMIN_PASSWORD;
+const common_phone_password = process.env.COMMON_PHONE_PASSWORD;
 
 const user_id_start = 1002;
-const user_id_end = 1052;
+const user_id_end = 1021;
 const copy_from_user = "1001";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -26,6 +28,17 @@ async function getFrameByContent(page, keyword) {
   const browser = await puppeteer.launch({
     headless: false,
     defaultViewport: null,
+    ignoreHTTPSErrors: true,
+    args: [
+      "--disable-extensions",
+      "--disable-component-extensions-with-background-pages",
+      "--no-proxy-server",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-background-networking",
+      "--disable-sync",
+      "--disable-features=HttpsFirstBalancedModeAutoEnable,HttpsUpgrades,HTTPS-FirstModeSetting",
+    ],
   });
 
   const page = await browser.newPage();
@@ -35,9 +48,24 @@ async function getFrameByContent(page, keyword) {
     password: admin_password,
   });
 
-  await page.goto(`http://${domain}/vicidial/admin.php`, {
-    waitUntil: "domcontentloaded",
-  });
+  const adminUrl = `http://${domain}/vicidial/admin.php`;
+  try {
+    await page.goto(adminUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
+  } catch (error) {
+    if (error.message?.includes("ERR_BLOCKED_BY_CLIENT")) {
+      console.log("❌ Browser/network client blocked the URL before page load.");
+      console.log(
+        "👉 Disable ad-block/web-shield/proxy/VPN filtering for this host, then run again:",
+      );
+      console.log(`   ${adminUrl}`);
+      await browser.close();
+      process.exit(1);
+    }
+    throw error;
+  }
 
   await delay(4000);
 
@@ -122,17 +150,17 @@ async function getFrameByContent(page, keyword) {
       delay: 30,
     });
 
-    await contentFrame.type('input[name="new_pass"]', userId.toString(), {
+    await contentFrame.type('input[name="new_pass"]', common_phone_password, {
       delay: 30,
     });
     await contentFrame.type(
       'input[name="new_conf_secret"]',
-      userId.toString(),
+      common_phone_password,
       { delay: 30 },
     );
 
     // Select Source Phone = 1001|serverIP
-    const sourceValue = `${copy_from_user}|162.55.236.185`;
+    const sourceValue = `${copy_from_user}|${domain}`;
 
     await contentFrame.select('select[name="source_phone"]', sourceValue);
 
