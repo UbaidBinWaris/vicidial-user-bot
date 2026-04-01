@@ -5,9 +5,10 @@ const domain = process.env.DOMAIN;
 const admin_username = process.env.ADMIN_USERNAME;
 const admin_password = process.env.ADMIN_PASSWORD;
 const common_phone_password = process.env.COMMON_PHONE_PASSWORD;
+const use_common_password = process.env.USE_COMMON_PASSWORD === "true";
 
-const user_id_start = 1002;
-const user_id_end = 1021;
+const user_id_start = Number.parseInt(process.env.ID_START);
+const user_id_end = Number.parseInt(process.env.ID_END);
 const copy_from_user = "1001";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -38,6 +39,7 @@ async function getFrameByContent(page, keyword) {
       "--disable-background-networking",
       "--disable-sync",
       "--disable-features=HttpsFirstBalancedModeAutoEnable,HttpsUpgrades,HTTPS-FirstModeSetting",
+      "--ignore-certificate-errors",
     ],
   });
 
@@ -48,7 +50,7 @@ async function getFrameByContent(page, keyword) {
     password: admin_password,
   });
 
-  const adminUrl = `http://${domain}/vicidial/admin.php`;
+  const adminUrl = `${domain}/vicidial/admin.php`;
   try {
     await page.goto(adminUrl, {
       waitUntil: "domcontentloaded",
@@ -150,19 +152,34 @@ async function getFrameByContent(page, keyword) {
       delay: 30,
     });
 
-    await contentFrame.type('input[name="new_pass"]', common_phone_password, {
+    const passwordToUse = use_common_password ? common_phone_password : userId.toString();
+
+    await contentFrame.type('input[name="new_pass"]', passwordToUse, {
       delay: 30,
     });
     await contentFrame.type(
       'input[name="new_conf_secret"]',
-      common_phone_password,
+      passwordToUse,
       { delay: 30 },
     );
 
-    // Select Source Phone = 1001|serverIP
-    const sourceValue = `${copy_from_user}|${domain}`;
+    // Select Source Phone by finding the option that starts with copy_from_user
+    const sourceSelected = await contentFrame.evaluate((copyFrom) => {
+      const select = document.querySelector('select[name="source_phone"]');
+      const option = Array.from(select.options).find((o) =>
+        o.value.startsWith(copyFrom + "|"),
+      );
+      if (option) {
+        select.value = option.value;
+        return true;
+      }
+      return false;
+    }, copy_from_user);
 
-    await contentFrame.select('select[name="source_phone"]', sourceValue);
+    if (!sourceSelected) {
+      console.log(`❌ Could not find source phone ${copy_from_user} in dropdown`);
+      break;
+    }
 
     await delay(1500);
 

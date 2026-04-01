@@ -5,10 +5,11 @@ const domain = process.env.DOMAIN;
 const admin_username = process.env.ADMIN_USERNAME;
 const admin_password = process.env.ADMIN_PASSWORD;
 const common_phone_password = process.env.COMMON_PHONE_PASSWORD;
+const use_common_password = process.env.USE_COMMON_PASSWORD === "true";
 
 
-user_id_start = 1002;
-user_id_end = 1021;
+const user_id_start = Number.parseInt(process.env.ID_START);
+const user_id_end = Number.parseInt(process.env.ID_END);
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -38,6 +39,7 @@ async function getFrameByContent(page, keyword) {
       "--disable-background-networking",
       "--disable-sync",
       "--disable-features=HttpsFirstBalancedModeAutoEnable,HttpsUpgrades,HTTPS-FirstModeSetting",
+      "--ignore-certificate-errors",
     ],
   });
 
@@ -49,7 +51,7 @@ async function getFrameByContent(page, keyword) {
     password: admin_password,
   });
 
-  const adminUrl = `http://${domain}/vicidial/admin.php`;
+  const adminUrl = `${domain}/vicidial/admin.php`;
   try {
     await page.goto(adminUrl, {
       waitUntil: "domcontentloaded",
@@ -132,10 +134,12 @@ async function getFrameByContent(page, keyword) {
     });
 
     // Fill form
+    const passwordToUse = use_common_password ? common_phone_password : userId.toString();
+
     await contentFrame.type('input[name="user"]', userId.toString(), {
       delay: 30,
     });
-    await contentFrame.type('input[name="pass"]', common_phone_password, {
+    await contentFrame.type('input[name="pass"]', passwordToUse, {
       delay: 30,
     });
     await contentFrame.type('input[name="full_name"]', `${userId}`, {
@@ -144,7 +148,7 @@ async function getFrameByContent(page, keyword) {
     await contentFrame.type('input[name="phone_login"]', userId.toString(), {
       delay: 30,
     });
-    await contentFrame.type('input[name="phone_pass"]', common_phone_password, {
+    await contentFrame.type('input[name="phone_pass"]', passwordToUse, {
       delay: 30,
     });
 
