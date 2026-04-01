@@ -15,9 +15,13 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function getFrameByContent(page, keyword) {
   for (const frame of page.frames()) {
-    const content = await frame.content();
-    if (content.includes(keyword)) {
-      return frame;
+    try {
+      const content = await frame.content();
+      if (content.includes(keyword)) {
+        return frame;
+      }
+    } catch {
+      // frame was destroyed during navigation, skip it
     }
   }
   return null;
