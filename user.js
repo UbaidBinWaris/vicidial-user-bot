@@ -71,6 +71,14 @@ async function getFrameByContent(page, keyword) {
       await browser.close();
       process.exit(1);
     }
+    if (error.message?.includes("ERR_EMPTY_RESPONSE")) {
+      console.log("❌ Server returned empty response. The Vicidial server may be down or unreachable.");
+      console.log("👉 Check if the server is running and accessible:");
+      console.log(`   ${adminUrl}`);
+      console.log("👉 Verify the DOMAIN in .env is correct.");
+      await browser.close();
+      process.exit(1);
+    }
     throw error;
   }
 
